@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Untangle - Pisahkan Garis</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js untuk efek suara sintetis tanpa URL eksternal -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            overflow: hidden; /* Mencegah scroll saat drag di mobile */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .font-mono-tech {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Latar belakang grid halus */
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* Efek tombol neon 3D/Bubble */
+        .btn-neon {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+        }
+        .btn-neon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+        }
+        .btn-neon:active {
+            transform: translateY(1px);
+        }
+
+        .btn-emerald {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+        .btn-emerald:hover {
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Animasi Modal Menang */
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.85) translateY(15px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Custom Scrollbar untuk Modal Level */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between bg-grid-pattern relative">
+
+    <!-- TAMPILAN START / MENU UTAMA -->
+    <div id="startScreen" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="animate-pop-in w-full max-w-md rounded-3xl bg-slate-900/95 border border-cyan-500/30 p-6 sm:p-8 text-center shadow-2xl shadow-cyan-500/15 relative overflow-hidden">
+            <!-- Dekorasi Cahaya Latar -->
+            <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-56 h-56 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Ikon & Judul Utama -->
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                <i data-lucide="share-2" class="w-8 h-8 text-white"></i>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent mb-1">
+                UNTANGLE
+            </h1>
+            <p class="text-sm sm:text-base text-slate-400 font-medium mb-6">Pisahkan Semua Garis</p>
+
+            <!-- Kartu Rekor Level Tertinggi -->
+            <div class="mb-5 p-3.5 rounded-2xl bg-slate-800/80 border border-amber-500/30 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                        <i data-lucide="crown" class="w-5 h-5 text-amber-400"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-xs text-slate-400">Rekor Level Tertinggi</p>
+                        <p class="text-xs text-amber-300/80 font-medium">Mode Tanpa Batas Level</p>
+                    </div>
+                </div>
+                <span id="startHighScore" class="font-mono-tech text-xl font-extrabold text-amber-400">Level 1</span>
+            </div>
+
+            <!-- Ringkasan Aturan Waktu & Kesulitan -->
+            <div class="mb-6 p-4 rounded-2xl bg-slate-800/50 border border-slate-700/70 text-left space-y-2.5">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+                    <i data-lucide="timer" class="w-3.5 h-3.5 text-cyan-400"></i>
+                    <span>Batas Waktu Progresif</span>
+                </p>
+                <div class="flex items-center justify-between text-xs sm:text-sm">
+                    <span class="text-slate-300">Level 1 – 3 <span class="text-emerald-400 font-semibold">(Mudah)</span></span>
+                    <span class="font-mono-tech font-bold text-slate-200 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">3 Menit</span>
+                </div>
+                <div class="flex items-center justify-between text-xs sm:text-sm">
+                    <span class="text-slate-300">Level 4 – 7 <span class="text-amber-400 font-semibold">(Menengah)</span></span>
+                    <span class="font-mono-tech font-bold text-slate-200 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">4 Menit</span>
+                </div>
+                <div class="flex items-center justify-between text-xs sm:text-sm">
+                    <span class="text-slate-300">Level 8+ <span class="text-rose-400 font-semibold">(Susah)</span></span>
+                    <span class="font-mono-tech font-bold text-slate-200 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">5 Menit</span>
+                </div>
+            </div>
+
+            <!-- Tombol Mulai Main -->
+            <button id="btnStartGame" class="btn-neon btn-emerald w-full py-4 px-6 rounded-2xl text-white font-extrabold text-base sm:text-lg tracking-wide flex items-center justify-center gap-2.5 cursor-pointer">
+                <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                <span>MULAI MAIN</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- HEADER / TOP BAR -->
+    <header class="w-full px-4 py-3 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 z-10">
+        <!-- Logo & Judul -->
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <i data-lucide="share-2" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                    UNTANGLE SURVIVAL
+                </h1>
+                <p class="text-[11px] text-slate-400 hidden sm:block">Bertahan sejauh mungkin sebelum waktu habis</p>
+            </div>
+        </div>
+
+        <!-- Statistik Game (Level Saat Ini, Rekor Tertinggi, Garis Menimpa, Hitung Mundur) -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Badge Level & Rekor Tertinggi -->
+            <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-slate-400 font-semibold">LEVEL</span>
+                    <span id="uiLevel" class="font-mono-tech text-sm sm:text-base font-bold text-cyan-400">1</span>
+                </div>
+                <div class="w-px h-4 bg-slate-700"></div>
+                <div class="flex items-center gap-1" title="Rekor Level Tertinggi">
+                    <i data-lucide="crown" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span id="uiHighScore" class="font-mono-tech text-xs sm:text-sm font-bold text-amber-300">1</span>
+                </div>
+            </div>
+
+            <!-- Badge Garis Menimpa (Crossings) -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span id="pingIndicator" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span id="dotIndicator" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                </span>
+                <span class="text-xs text-slate-400 font-semibold hidden md:inline">MENIMPA:</span>
+                <span id="uiCrossings" class="font-mono-tech text-sm sm:text-base font-bold text-rose-400">0</span>
+            </div>
+
+            <!-- Badge Timer Hitung Mundur -->
+            <div id="timerContainer" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 transition-colors">
+                <i id="timerIcon" data-lucide="timer" class="w-4 h-4 text-cyan-400"></i>
+                <span id="uiTimer" class="font-mono-tech text-sm sm:text-base font-bold text-slate-100">03:00</span>
+            </div>
+
+            <!-- Badge Skor -->
+            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700" title="Total Skor">
+                <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+                <span id="uiScore" class="font-mono-tech text-sm sm:text-base font-bold text-purple-300">0</span>
+            </div>
+
+            <!-- Tombol Pause -->
+            <button id="btnPause" class="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 transition" title="Jeda Permainan">
+                <i data-lucide="pause" class="w-4 h-4 sm:w-5 sm:h-5 text-amber-400"></i>
+            </button>
+
+            <!-- Tombol Suara -->
+            <button id="btnToggleSound" class="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 transition" title="Suara Efek">
+                <i id="iconSoundOn" data-lucide="volume-2" class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400"></i>
+                <i id="iconSoundOff" data-lucide="volume-x" class="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 hidden"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- BANNER INSTRUKSI SINGKAT -->
+    <div class="w-full text-center py-2 px-4 bg-slate-900/40 border-b border-slate-800/40 pointer-events-none z-10 flex items-center justify-center gap-3 sm:gap-4">
+        <p id="instructionText" class="text-xs sm:text-sm text-slate-300 font-medium">
+            Tarik titik-titik agar tidak ada garis <span class="text-rose-400 font-bold">merah</span> yang saling menimpa!
+        </p>
+        <span class="inline-flex sm:hidden items-center gap-1 text-xs text-purple-300 font-mono-tech bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/80">
+            <i data-lucide="sparkles" class="w-3 h-3 text-purple-400"></i>
+            <span id="uiScoreMobile">0</span>
+        </span>
+        <span class="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 font-mono-tech bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/80">
+            <i data-lucide="move" class="w-3 h-3"></i>
+            <span id="uiMoves">0</span> gerakan
+        </span>
+    </div>
+
+    <!-- AREA KANVAS UTAMA -->
+    <main id="canvasContainer" class="relative flex-1 w-full h-full overflow-hidden">
+        <canvas id="gameCanvas"></canvas>
+    </main>
+
+    <!-- FOOTER / TOMBOL KONTROL -->
+    <footer class="w-full px-4 py-3 sm:py-4 bg-slate-900/80 backdrop-blur-md border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 z-10">
+        <button id="btnUndo" disabled class="btn-neon flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none border border-slate-600/80 text-sm font-semibold text-slate-200" title="Urungkan langkah terakhir">
+            <i data-lucide="undo-2" class="w-4 h-4 text-purple-400"></i>
+            <span>Undo</span>
+        </button>
+
+        <button id="btnShuffle" class="btn-neon flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600/80 text-sm font-semibold text-slate-200" title="Acak ulang posisi titik tanpa mereset waktu">
+            <i data-lucide="shuffle" class="w-4 h-4 text-amber-400"></i>
+            <span>Acak Ulang</span>
+        </button>
+
+        <button id="btnBackToStart" class="btn-neon flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600/80 text-sm font-semibold text-slate-300" title="Kembali ke Menu Utama">
+            <i data-lucide="home" class="w-4 h-4 text-cyan-400"></i>
+            <span>Menu Utama</span>
+        </button>
+    </footer>
+
+    <!-- MODAL PAUSE (JEDA PERMAINAN) -->
+    <div id="pauseModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl hidden items-center justify-center p-4 z-50">
+        <div class="animate-pop-in w-full max-w-sm rounded-3xl bg-slate-900 border border-amber-500/40 p-6 sm:p-7 text-center shadow-2xl shadow-amber-500/15">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                <i data-lucide="pause" class="w-8 h-8 text-white"></i>
+            </div>
+            <h2 class="text-2xl font-extrabold text-white mb-1">Permainan Dijeda</h2>
+            <p class="text-sm text-slate-400 mb-6">Waktu dihentikan sementara dan papan disembunyikan.</p>
+
+            <div class="space-y-2.5">
+                <button id="btnResume" class="btn-neon btn-emerald w-full py-3.5 px-6 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer">
+                    <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                    <span>Lanjutkan Main</span>
+                </button>
+                <button id="btnPauseHome" class="btn-neon w-full py-3 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                    <i data-lucide="home" class="w-4 h-4 text-cyan-400"></i>
+                    <span>Keluar ke Menu Utama</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MENANG (LEVEL SELESAI) -->
+    <div id="winModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="animate-pop-in w-full max-w-sm rounded-3xl bg-slate-900 border border-emerald-500/40 p-6 sm:p-7 text-center shadow-2xl shadow-emerald-500/20 relative overflow-hidden">
+            <!-- Dekorasi Cahaya -->
+            <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-40 h-40 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <i data-lucide="trophy" class="w-8 h-8 text-white"></i>
+            </div>
+
+            <h2 id="winTitle" class="text-2xl font-extrabold text-white mb-1">Level 1 Selesai!</h2>
+            <p id="winBonusBadge" class="text-xs font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 inline-block px-3 py-1 rounded-full mb-5">
+                +10 Detik Bonus Waktu & +100 Skor!
+            </p>
+
+            <!-- Ringkasan Skor -->
+            <div class="grid grid-cols-3 gap-2.5 mb-6">
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Gerakan</p>
+                    <p id="winMoves" class="font-mono-tech text-base sm:text-lg font-bold text-cyan-400">0</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Sisa Waktu</p>
+                    <p id="winTimeLeft" class="font-mono-tech text-base sm:text-lg font-bold text-emerald-400">00:00</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Total Skor</p>
+                    <p id="winTotalScore" class="font-mono-tech text-base sm:text-lg font-bold text-purple-400">0</p>
+                </div>
+            </div>
+
+            <button id="btnNextLevel" class="btn-neon btn-emerald w-full py-3.5 px-6 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer">
+                <span>Lanjut ke Level Berikutnya</span>
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL GAME OVER / WAKTU HABIS -->
+    <div id="gameOverModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="animate-pop-in w-full max-w-sm rounded-3xl bg-slate-900 border border-rose-500/40 p-6 sm:p-7 text-center shadow-2xl shadow-rose-500/20 relative overflow-hidden">
+            <!-- Dekorasi Cahaya -->
+            <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-40 h-40 bg-rose-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-rose-500 to-red-700 flex items-center justify-center shadow-lg shadow-rose-500/30">
+                <i data-lucide="alarm-clock-off" class="w-8 h-8 text-white"></i>
+            </div>
+
+            <h2 class="text-2xl font-extrabold text-white mb-1">Waktu Habis!</h2>
+            <p class="text-sm text-slate-400 mb-5">Perjalanan bertahanmu terhenti di level ini.</p>
+
+            <!-- Ringkasan Pencapaian Survival -->
+            <div class="grid grid-cols-3 gap-2.5 mb-6">
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Dicapai</p>
+                    <p id="goReachedLevel" class="font-mono-tech text-base sm:text-lg font-bold text-rose-400">Lv. 1</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Total Skor</p>
+                    <p id="goTotalScore" class="font-mono-tech text-base sm:text-lg font-bold text-purple-400">0</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+                    <p class="text-[11px] text-slate-400 mb-0.5">Rekor</p>
+                    <p id="goBestLevel" class="font-mono-tech text-base sm:text-lg font-bold text-amber-400">Lv. 1</p>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                <button id="btnRestartSurvival" class="btn-neon w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-orange-600 hover:from-rose-400 hover:to-orange-500 text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-500/30">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    <span>Main Lagi dari Level 1</span>
+                </button>
+                <button id="btnGoHome" class="btn-neon w-full py-3 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                    <i data-lucide="home" class="w-4 h-4 text-cyan-400"></i>
+                    <span>Menu Utama</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFIKASI (Pengganti alert) -->
+    <div id="toastMessage" class="fixed top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-slate-800/95 border border-cyan-500/40 text-xs sm:text-sm font-medium text-cyan-300 shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+        Pesan notifikasi
+    </div>
+
+    <script>
+        // Inisialisasi ikon Lucide
+        lucide.createIcons();
+
+        /**
+         * SISTEM AUDIO (Tone.js)
+         * Menghasilkan suara lembut saat menarik titik, melepas titik, dan saat menang/kalah.
+         */
+        let soundEnabled = true;
+        let synth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.3 }
+                }).toDestination();
+                synth.volume.value = -12;
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (Tone.context.state !== 'running') {
+                    Tone.context.resume();
+                }
+                if (type === 'grab') {
+                    synth.triggerAttackRelease("C5", "32n");
+                } else if (type === 'drop') {
+                    synth.triggerAttackRelease("G4", "32n");
+                } else if (type === 'tick') {
+                    synth.triggerAttackRelease("A5", "64n");
+                } else if (type === 'win') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.08);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.16);
+                    synth.triggerAttackRelease("C6", "8n", now + 0.24);
+                } else if (type === 'gameover') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("E4", "8n", now);
+                    synth.triggerAttackRelease("D4", "8n", now + 0.15);
+                    synth.triggerAttackRelease("C4", "4n", now + 0.30);
+                }
+            } catch (e) {
+                // Abaikan error konteks audio jika diblokir browser
+            }
+        }
+
+        /**
+         * STATE & VARIABEL GAME UTAMA
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        let width = 0;
+        let height = 0;
+        let currentLevel = 1;
+        let highestLevel = parseInt(localStorage.getItem('untangle_survival_best') || '1', 10);
+        let totalScore = 0;
+        let carryOverBonusTime = 0; // Akumulasi bonus +10 detik dari level sebelumnya
+
+        let nodes = []; // Array titik: { id, x, y, solvedX, solvedY, radius, locked, hasCrossing }
+        let edges = []; // Array garis: { a, b, isCrossing }
+        let moveHistory = []; // Riwayat posisi untuk fitur Undo
+        let particles = []; // Efek partikel saat menang
+
+        let draggingNode = null;
+        let dragStartPos = null;
+        let hoveredNode = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        let movesCount = 0;
+        let timeRemaining = 180; // Detik tersisa
+        let timerInterval = null;
+        let isGameStarted = false;
+        let isPaused = false;
+        let isLevelCompleted = false;
+        let isGameOver = false;
+        let winCheckTimeout = null;
+
+        /**
+         * FORMAT WAKTU & ATURAN BATAS WAKTU PER LEVEL (3 - 5 MENIT)
+         */
+        function getTimeLimitForLevel(level) {
+            if (level <= 3) return 180; // Mudah: 3 menit
+            if (level <= 7) return 240; // Menengah: 4 menit
+            return 300;                 // Susah: 5 menit
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateTimerUI() {
+            const timerEl = document.getElementById('uiTimer');
+            const containerEl = document.getElementById('timerContainer');
+            const iconEl = document.getElementById('timerIcon');
+
+            timerEl.textContent = formatTime(timeRemaining);
+
+            if (timeRemaining <= 20) {
+                containerEl.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/90 border border-rose-500 animate-pulse transition-colors';
+                timerEl.className = 'font-mono-tech text-sm sm:text-base font-bold text-rose-400';
+                iconEl.className = 'w-4 h-4 text-rose-400';
+            } else if (timeRemaining <= 60) {
+                containerEl.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/70 transition-colors';
+                timerEl.className = 'font-mono-tech text-sm sm:text-base font-bold text-amber-300';
+                iconEl.className = 'w-4 h-4 text-amber-400';
+            } else {
+                containerEl.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 transition-colors';
+                timerEl.className = 'font-mono-tech text-sm sm:text-base font-bold text-slate-100';
+                iconEl.className = 'w-4 h-4 text-cyan-400';
+            }
+        }
+
+        /**
+         * GEOMETRI: DETEKSI PERPOTONGAN 2 GARIS (SEGMENT INTERSECTION)
+         */
+        function ccw(A, B, C) {
+            return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+        }
+
+        function segmentsIntersect(A, B, C, D) {
+            if (A === C || A === D || B === C || B === D) return false;
+            return (ccw(A, C, D) !== ccw(B, C, D)) && (ccw(A, B, C) !== ccw(A, B, D));
+        }
+
+        function updateCrossings() {
+            let crossingCount = 0;
+
+            for (let i = 0; i < nodes.length; i++) {
+                nodes[i].hasCrossing = false;
+            }
+
+            for (let i = 0; i < edges.length; i++) {
+                edges[i].isCrossing = false;
+            }
+
+            for (let i = 0; i < edges.length; i++) {
+                const e1 = edges[i];
+                const A = nodes[e1.a];
+                const B = nodes[e1.b];
+
+                for (let j = i + 1; j < edges.length; j++) {
+                    const e2 = edges[j];
+                    const C = nodes[e2.a];
+                    const D = nodes[e2.b];
+
+                    if (segmentsIntersect(A, B, C, D)) {
+                        e1.isCrossing = true;
+                        e2.isCrossing = true;
+                        A.hasCrossing = true;
+                        B.hasCrossing = true;
+                        C.hasCrossing = true;
+                        D.hasCrossing = true;
+                        crossingCount++;
+                    }
+                }
+            }
+
+            // Update UI Statistik
+            const uiCross = document.getElementById('uiCrossings');
+            const dotInd = document.getElementById('dotIndicator');
+            const pingInd = document.getElementById('pingIndicator');
+
+            uiCross.textContent = crossingCount;
+            if (crossingCount === 0) {
+                uiCross.className = 'font-mono-tech text-sm sm:text-base font-bold text-emerald-400';
+                dotInd.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+                pingInd.className = 'hidden';
+            } else {
+                uiCross.className = 'font-mono-tech text-sm sm:text-base font-bold text-rose-400';
+                dotInd.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500';
+                pingInd.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75';
+            }
+
+            return crossingCount;
+        }
+
+        /**
+         * GENERATOR PLANAR GRAPH (DIJAMIN 100% BISA DISELESAIKAN)
+         */
+        function generatePlanarLevel(level) {
+            const nodeCount = Math.min(4 + level, 40);
+            const tempNodes = [];
+            const tempEdges = [];
+
+            const paddingX = Math.max(55, width * 0.14);
+            const paddingY = Math.max(55, height * 0.14);
+            const usableW = Math.max(120, width - paddingX * 2);
+            const usableH = Math.max(120, height - paddingY * 2);
+            const cx = width / 2;
+            const cy = height / 2;
+            const maxR = Math.min(usableW, usableH) / 2;
+
+            // 1. Tempatkan titik secara acak sebagai posisi solusi
+            for (let i = 0; i < nodeCount; i++) {
+                let placed = false;
+                let attempts = 0;
+                const minDist = Math.max(36, (maxR * 1.4) / Math.sqrt(nodeCount));
+
+                while (!placed && attempts < 150) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = Math.sqrt(Math.random()) * maxR;
+                    const sx = cx + Math.cos(angle) * r;
+                    const sy = cy + Math.sin(angle) * r;
+
+                    let tooClose = false;
+                    for (const existing of tempNodes) {
+                        if (Math.hypot(sx - existing.solvedX, sy - existing.solvedY) < minDist) {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+
+                    if (!tooClose) {
+                        tempNodes.push({
+                            id: i,
+                            x: sx,
+                            y: sy,
+                            solvedX: sx,
+                            solvedY: sy,
+                            radius: window.innerWidth < 640 ? 15 : 13,
+                            locked: false,
+                            hasCrossing: false
+                        });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+
+                // Fallback jika ruang padat
+                if (!placed) {
+                    const angle = (i / nodeCount) * Math.PI * 2;
+                    const r = maxR * 0.85;
+                    const sx = cx + Math.cos(angle) * r;
+                    const sy = cy + Math.sin(angle) * r;
+                    tempNodes.push({
+                        id: i,
+                        x: sx,
+                        y: sy,
+                        solvedX: sx,
+                        solvedY: sy,
+                        radius: window.innerWidth < 640 ? 15 : 13,
+                        locked: false,
+                        hasCrossing: false
+                    });
+                }
+            }
+
+            // 2. Kumpulkan semua kemungkinan pasangan sisi dan urutkan dari yang terpendek
+            const candidatePairs = [];
+            for (let i = 0; i < nodeCount; i++) {
+                for (let j = i + 1; j < nodeCount; j++) {
+                    const dist = Math.hypot(
+                        tempNodes[i].solvedX - tempNodes[j].solvedX,
+                        tempNodes[i].solvedY - tempNodes[j].solvedY
+                    );
+                    candidatePairs.push({ a: i, b: j, dist });
+                }
+            }
+            candidatePairs.sort((p1, p2) => p1.dist - p2.dist);
+
+            // 3. Tambahkan sisi secara greedy asalkan tidak berpotongan pada posisi solusi
+            const maxEdges = Math.floor(nodeCount * 2.25);
+            for (const pair of candidatePairs) {
+                if (tempEdges.length >= maxEdges) break;
+
+                const A = tempNodes[pair.a];
+                const B = tempNodes[pair.b];
+                let intersectsExisting = false;
+
+                for (const edge of tempEdges) {
+                    const C = tempNodes[edge.a];
+                    const D = tempNodes[edge.b];
+                    if (
+                        A.id !== C.id && A.id !== D.id &&
+                        B.id !== C.id && B.id !== D.id
+                    ) {
+                        const pA = { x: A.solvedX, y: A.solvedY };
+                        const pB = { x: B.solvedX, y: B.solvedY };
+                        const pC = { x: C.solvedX, y: C.solvedY };
+                        const pD = { x: D.solvedX, y: D.solvedY };
+                        if ((ccw(pA, pC, pD) !== ccw(pB, pC, pD)) && (ccw(pA, pB, pC) !== ccw(pA, pB, pD))) {
+                            intersectsExisting = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!intersectsExisting) {
+                    tempEdges.push({ a: pair.a, b: pair.b, isCrossing: false });
+                }
+            }
+
+            nodes = tempNodes;
+            edges = tempEdges;
+
+            // Tentukan titik terkunci (Locked / Anchor Nodes) mulai Level 5 ke atas
+            const lockedCount = level >= 10 ? 2 : (level >= 5 ? 1 : 0);
+            if (lockedCount > 0) {
+                const candidateIndices = nodes.map((_, idx) => idx);
+                for (let i = candidateIndices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [candidateIndices[i], candidateIndices[j]] = [candidateIndices[j], candidateIndices[i]];
+                }
+                for (let k = 0; k < lockedCount; k++) {
+                    const idx = candidateIndices[k];
+                    nodes[idx].locked = true;
+                    // Tempatkan titik terkunci di posisi solusinya agar puzzle tetap 100% bisa diselesaikan
+                    nodes[idx].x = nodes[idx].solvedX;
+                    nodes[idx].y = nodes[idx].solvedY;
+                }
+            }
+
+            // 4. Acak posisi titik yang tidak terkunci agar kusut & siap dimainkan
+            shuffleNodePositions();
+        }
+
+        function shuffleNodePositions() {
+            if (nodes.length === 0) return;
+
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(width, height) * 0.35;
+
+            // Hanya acak titik yang tidak terkunci
+            const movableIndices = nodes
+                .map((n, idx) => (!n.locked ? idx : -1))
+                .filter(idx => idx !== -1);
+
+            let attempts = 0;
+            do {
+                const shuffled = [...movableIndices];
+                // Fisher-Yates shuffle urutan sudut
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+
+                shuffled.forEach((nodeIdx, posIdx) => {
+                    const angle = (posIdx / shuffled.length) * Math.PI * 2;
+                    nodes[nodeIdx].x = cx + Math.cos(angle) * radius;
+                    nodes[nodeIdx].y = cy + Math.sin(angle) * radius;
+                });
+
+                attempts++;
+            } while (updateCrossings() === 0 && attempts < 15);
+        }
+
+        function updateScoreUI() {
+            document.getElementById('uiScore').textContent = totalScore;
+            document.getElementById('uiScoreMobile').textContent = totalScore;
+        }
+
+        function updateUndoButton() {
+            const btnUndo = document.getElementById('btnUndo');
+            btnUndo.disabled = moveHistory.length === 0 || !isGameStarted || isPaused || isLevelCompleted || isGameOver;
+        }
+
+        /**
+         * ALUR START, PAUSE, MENANG, & GAME OVER
+         */
+        function startLevel(level) {
+            if (level === 1) {
+                totalScore = 0;
+                carryOverBonusTime = 0;
+            }
+
+            currentLevel = level;
+            isGameStarted = true;
+            isPaused = false;
+            isLevelCompleted = false;
+            isGameOver = false;
+            movesCount = 0;
+            moveHistory = [];
+            draggingNode = null;
+            particles = [];
+            clearTimeout(winCheckTimeout);
+            clearInterval(timerInterval);
+
+            // Sembunyikan semua layar modal/overlay
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('pauseModal').classList.remove('flex');
+            document.getElementById('winModal').classList.add('hidden');
+            document.getElementById('winModal').classList.remove('flex');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.remove('flex');
+
+            // Perbarui rekor tertinggi jika mencapai level baru
+            if (currentLevel > highestLevel) {
+                highestLevel = currentLevel;
+                localStorage.setItem('untangle_survival_best', highestLevel.toString());
+            }
+
+            // Update tampilan UI atas
+            document.getElementById('uiLevel').textContent = currentLevel;
+            document.getElementById('uiHighScore').textContent = highestLevel;
+            document.getElementById('uiMoves').textContent = '0';
+            updateScoreUI();
+            updateUndoButton();
+
+            // Bangkitkan jaring level baru
+            generatePlanarLevel(currentLevel);
+
+            if (currentLevel === 5) {
+                showToast('Tantangan Baru: Titik bergembok tidak bisa digeser!');
+            }
+
+            // Setel dan mulai timer hitung mundur sesuai tingkat kesulitan + bonus waktu sebelumnya
+            timeRemaining = getTimeLimitForLevel(currentLevel) + carryOverBonusTime;
+            carryOverBonusTime = 0;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                if (!isGameStarted || isPaused || isLevelCompleted || isGameOver) return;
+                timeRemaining--;
+                updateTimerUI();
+
+                if (timeRemaining <= 10 && timeRemaining > 0) {
+                    playSound('tick');
+                }
+
+                if (timeRemaining <= 0) {
+                    timeRemaining = 0;
+                    updateTimerUI();
+                    triggerGameOver();
+                }
+            }, 1000);
+        }
+
+        function pauseGame() {
+            if (!isGameStarted || isPaused || isLevelCompleted || isGameOver) return;
+            isPaused = true;
+            draggingNode = null;
+            updateUndoButton();
+            const modal = document.getElementById('pauseModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function resumeGame() {
+            if (!isPaused) return;
+            isPaused = false;
+            updateUndoButton();
+            const modal = document.getElementById('pauseModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function showStartScreen() {
+            isGameStarted = false;
+            isPaused = false;
+            isLevelCompleted = false;
+            isGameOver = false;
+            draggingNode = null;
+            moveHistory = [];
+            updateUndoButton();
+            clearTimeout(winCheckTimeout);
+            clearInterval(timerInterval);
+
+            // Tutup semua modal jika terbuka
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('pauseModal').classList.remove('flex');
+            document.getElementById('winModal').classList.add('hidden');
+            document.getElementById('winModal').classList.remove('flex');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.remove('flex');
+
+            // Perbarui tampilan rekor tertinggi di layar awal
+            document.getElementById('startHighScore').textContent = `Level ${highestLevel}`;
+            document.getElementById('uiHighScore').textContent = highestLevel;
+
+            // Tampilkan layar start
+            document.getElementById('startScreen').classList.remove('hidden');
+
+            // Tampilkan pratinjau visual jaring level 1 di latar belakang tanpa memulai timer
+            if (nodes.length === 0) {
+                generatePlanarLevel(1);
+            }
+        }
+
+        function triggerLevelWin() {
+            if (isLevelCompleted || isGameOver) return;
+            isLevelCompleted = true;
+            updateUndoButton();
+            clearInterval(timerInterval);
+            playSound('win');
+
+            // Hitung perolehan skor & bonus waktu +10 detik untuk level berikutnya
+            const levelBonus = currentLevel * 100;
+            const timeBonusPoints = timeRemaining * 2;
+            const earnedScore = levelBonus + timeBonusPoints;
+            totalScore += earnedScore;
+            carryOverBonusTime = 10;
+            updateScoreUI();
+
+            // Ledakan partikel perayaan di setiap titik
+            nodes.forEach(n => {
+                for (let i = 0; i < 10; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1.5 + Math.random() * 4;
+                    particles.push({
+                        x: n.x,
+                        y: n.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0,
+                        color: Math.random() > 0.5 ? '#10b981' : '#38bdf8'
+                    });
+                }
+            });
+
+            // Simpan rekor level berikutnya yang berhasil dibuka
+            if (currentLevel + 1 > highestLevel) {
+                highestLevel = currentLevel + 1;
+                localStorage.setItem('untangle_survival_best', highestLevel.toString());
+                document.getElementById('uiHighScore').textContent = highestLevel;
+            }
+
+            document.getElementById('winTitle').textContent = `Level ${currentLevel} Selesai!`;
+            document.getElementById('winBonusBadge').textContent = `+10 Detik Bonus Waktu & +${earnedScore} Skor!`;
+            document.getElementById('winMoves').textContent = movesCount;
+            document.getElementById('winTimeLeft').textContent = formatTime(timeRemaining);
+            document.getElementById('winTotalScore').textContent = totalScore;
+
+            const modal = document.getElementById('winModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function triggerGameOver() {
+            if (isLevelCompleted || isGameOver) return;
+            isGameOver = true;
+            draggingNode = null;
+            updateUndoButton();
+            clearInterval(timerInterval);
+            playSound('gameover');
+
+            document.getElementById('goReachedLevel').textContent = `Lv. ${currentLevel}`;
+            document.getElementById('goTotalScore').textContent = `${totalScore}`;
+            document.getElementById('goBestLevel').textContent = `Lv. ${highestLevel}`;
+
+            const modal = document.getElementById('gameOverModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2200);
+        }
+
+        /**
+         * INPUT POINTER (MOUSE & SENTUH LAYAR MOBILE)
+         */
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function findNodeAt(x, y) {
+            // Iterasi terbalik agar titik paling atas terpilih lebih dulu
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const n = nodes[i];
+                const hitRadius = n.radius + 12; // Area sentuh ekstra nyaman di HP
+                if (Math.hypot(x - n.x, y - n.y) <= hitRadius) {
+                    return n;
+                }
+            }
+            return null;
+        }
+
+        function onPointerDown(e) {
+            if (!isGameStarted || isPaused || isLevelCompleted || isGameOver) return;
+            const pos = getPointerPos(e);
+            const target = findNodeAt(pos.x, pos.y);
+            if (target) {
+                if (target.locked) {
+                    playSound('tick');
+                    showToast('Titik ini terkunci! Geser titik lain di sekitarnya.');
+                    return;
+                }
+                draggingNode = target;
+                dragStartPos = { x: target.x, y: target.y };
+                dragOffsetX = pos.x - target.x;
+                dragOffsetY = pos.y - target.y;
+                playSound('grab');
+                clearTimeout(winCheckTimeout);
+            }
+        }
+
+        function onPointerMove(e) {
+            if (!isGameStarted || isPaused || isLevelCompleted || isGameOver) return;
+            const pos = getPointerPos(e);
+
+            if (draggingNode) {
+                if (e.cancelable) e.preventDefault();
+                const margin = draggingNode.radius + 8;
+                draggingNode.x = Math.max(margin, Math.min(width - margin, pos.x - dragOffsetX));
+                draggingNode.y = Math.max(margin, Math.min(height - margin, pos.y - dragOffsetY));
+                updateCrossings();
+            } else {
+                hoveredNode = findNodeAt(pos.x, pos.y);
+            }
+        }
+
+        function onPointerUp() {
+            if (!draggingNode) return;
+
+            // Simpan riwayat posisi sebelumnya untuk fitur Undo jika titik benar-benar berpindah
+            if (dragStartPos && Math.hypot(draggingNode.x - dragStartPos.x, draggingNode.y - dragStartPos.y) > 2) {
+                moveHistory.push({
+                    nodeId: draggingNode.id,
+                    prevX: dragStartPos.x,
+                    prevY: dragStartPos.y
+                });
+                if (moveHistory.length > 30) moveHistory.shift();
+                movesCount++;
+                document.getElementById('uiMoves').textContent = movesCount;
+                updateUndoButton();
+            }
+
+            draggingNode = null;
+            dragStartPos = null;
+            playSound('drop');
+
+            const remainingCrossings = updateCrossings();
+            if (remainingCrossings === 0 && isGameStarted && !isPaused && !isLevelCompleted && !isGameOver) {
+                clearTimeout(winCheckTimeout);
+                winCheckTimeout = setTimeout(() => {
+                    if (updateCrossings() === 0) {
+                        triggerLevelWin();
+                    }
+                }, 280);
+            }
+        }
+
+        canvas.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerUp);
+
+        /**
+         * RENDER KANVAS & RESIZE RESPONSIF
+         */
+        function resizeCanvas() {
+            const oldW = width;
+            const oldH = height;
+
+            width = container.clientWidth;
+            height = container.clientHeight;
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Skalakan posisi titik secara proporsional saat ukuran layar berubah
+            if (oldW > 0 && oldH > 0 && nodes.length > 0) {
+                const scaleX = width / oldW;
+                const scaleY = height / oldH;
+                nodes.forEach(n => {
+                    n.x *= scaleX;
+                    n.y *= scaleY;
+                    n.solvedX *= scaleX;
+                    n.solvedY *= scaleY;
+                });
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Gambar garis (Hijau jika bebas/menang, Merah jika saling menimpa)
+            for (const edge of edges) {
+                const A = nodes[edge.a];
+                const B = nodes[edge.b];
+                if (!A || !B) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(A.x, A.y);
+                ctx.lineTo(B.x, B.y);
+                ctx.lineCap = 'round';
+
+                if (isLevelCompleted) {
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = 'rgba(16, 185, 129, 0.55)';
+                    ctx.shadowBlur = 10;
+                } else if (edge.isCrossing) {
+                    ctx.strokeStyle = 'rgba(244, 63, 94, 0.85)';
+                    ctx.lineWidth = 2.5;
+                    ctx.shadowColor = 'rgba(244, 63, 94, 0.45)';
+                    ctx.shadowBlur = 8;
+                } else {
+                    ctx.strokeStyle = 'rgba(16, 185, 129, 0.78)';
+                    ctx.lineWidth = 2.5;
+                    ctx.shadowColor = 'rgba(16, 185, 129, 0.25)';
+                    ctx.shadowBlur = 4;
+                }
+
+                ctx.stroke();
+            }
+
+            // Reset shadow sebelum menggambar node
+            ctx.shadowBlur = 0;
+
+            // 2. Gambar titik simpul (Nodes)
+            for (const node of nodes) {
+                const isDragged = draggingNode === node;
+                const isHovered = hoveredNode === node;
+                const r = isDragged ? node.radius + 3 : (isHovered ? node.radius + 1.5 : node.radius);
+
+                // Indikator pendaran merah tipis pada titik yang garisnya masih menimpa
+                if (!isLevelCompleted && node.hasCrossing) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r + 5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(244, 63, 94, 0.22)';
+                    ctx.fill();
+                }
+
+                // Lingkaran luar cahaya saat disentuh/ditarik
+                if (isDragged || (isHovered && !node.locked)) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r + 7, 0, Math.PI * 2);
+                    ctx.fillStyle = isDragged ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.14)';
+                    ctx.fill();
+                }
+
+                // Badan titik
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+                if (isLevelCompleted) {
+                    ctx.fillStyle = '#059669';
+                } else if (node.locked) {
+                    ctx.fillStyle = '#451a03';
+                } else if (isDragged) {
+                    ctx.fillStyle = '#0284c7';
+                } else {
+                    ctx.fillStyle = '#0f172a';
+                }
+                ctx.fill();
+
+                ctx.lineWidth = isDragged ? 3.5 : 2.5;
+                if (isLevelCompleted) {
+                    ctx.strokeStyle = '#34d399';
+                } else if (node.locked) {
+                    ctx.strokeStyle = '#f59e0b';
+                } else if (isDragged) {
+                    ctx.strokeStyle = '#7dd3fc';
+                } else if (node.hasCrossing) {
+                    ctx.strokeStyle = '#fb7185';
+                } else {
+                    ctx.strokeStyle = '#38bdf8';
+                }
+                ctx.stroke();
+
+                if (node.locked) {
+                    // Gambar ikon gembok kecil di tengah titik terkunci
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y - 2, 2.8, Math.PI, 0);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillRect(node.x - 3.8, node.y - 1.5, 7.6, 5.5);
+                } else {
+                    // Titik inti di tengah
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = isLevelCompleted ? '#ecfdf5' : '#e0f2fe';
+                    ctx.fill();
+                }
+            }
+
+            // 3. Gambar partikel perayaan jika menang
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.025;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        /**
+         * KONTROL UI & MODAL
+         */
+        document.getElementById('btnStartGame').addEventListener('click', () => {
+            playSound('grab');
+            startLevel(1);
+        });
+
+        document.getElementById('btnUndo').addEventListener('click', () => {
+            if (!isGameStarted || isPaused || isLevelCompleted || isGameOver || moveHistory.length === 0) return;
+            const lastMove = moveHistory.pop();
+            const targetNode = nodes.find(n => n.id === lastMove.nodeId);
+            if (targetNode) {
+                targetNode.x = lastMove.prevX;
+                targetNode.y = lastMove.prevY;
+                updateCrossings();
+                playSound('drop');
+            }
+            updateUndoButton();
+        });
+
+        document.getElementById('btnPause').addEventListener('click', () => {
+            playSound('grab');
+            pauseGame();
+        });
+
+        document.getElementById('btnResume').addEventListener('click', () => {
+            playSound('grab');
+            resumeGame();
+        });
+
+        document.getElementById('btnPauseHome').addEventListener('click', () => {
+            playSound('drop');
+            showStartScreen();
+        });
+
+        document.getElementById('btnShuffle').addEventListener('click', () => {
+            if (!isGameStarted || isPaused || isLevelCompleted || isGameOver) return;
+            draggingNode = null;
+            moveHistory = [];
+            updateUndoButton();
+            shuffleNodePositions();
+            playSound('drop');
+            showToast('Posisi titik diacak ulang (waktu tetap berjalan)');
+        });
+
+        document.getElementById('btnBackToStart').addEventListener('click', () => {
+            playSound('drop');
+            showStartScreen();
+        });
+
+        document.getElementById('btnGoHome').addEventListener('click', () => {
+            playSound('drop');
+            showStartScreen();
+        });
+
+        document.getElementById('btnNextLevel').addEventListener('click', () => {
+            startLevel(currentLevel + 1);
+        });
+
+        document.getElementById('btnRestartSurvival').addEventListener('click', () => {
+            startLevel(1);
+        });
+
+        document.getElementById('btnToggleSound').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('iconSoundOn').classList.toggle('hidden', !soundEnabled);
+            document.getElementById('iconSoundOff').classList.toggle('hidden', soundEnabled);
+            if (soundEnabled) playSound('grab');
+        });
+
+        // Inisialisasi saat halaman selesai dimuat (tampilkan Start Screen terlebih dahulu)
+        window.onload = function () {
+            resizeCanvas();
+            showStartScreen();
+            render();
+        };
+    </script>
+</body>
+</html>
